@@ -1,14 +1,16 @@
 import React from "react";
 import "./App.css";
-import { Switch, Route } from "react-router-dom";
+import { Switch, Route, withRouter } from "react-router-dom";
 
 import Header from "./components/Header";
-import CarsList from "./components/CarsList";
-import CarDetails from "./components/CarDetails";
-import Cart from "./components/Cart";
+
 
 import applySortingAndFiltering from "./util/applySortingAndFiltering";
 import carDataService from "./service/carDataService";
+
+import "./components/car-list.js";
+import "./components/cart-element.js";
+import "./components/car-details.js";
 
 class App extends React.Component {
   state = {
@@ -25,6 +27,13 @@ class App extends React.Component {
     toggleFilterPanel: true,
   };
 
+  constructor(props) {
+    super(props);
+
+    this.myRef = React.createRef();
+    this.props = props;
+  }
+
   /* On app load, calls the carDataService to get the formatted cars data */
   componentDidMount() {
     carDataService().then((carData) => {
@@ -38,6 +47,41 @@ class App extends React.Component {
       });
     });
   }
+
+  componentDidUpdate() {
+    if (this.props.location.pathname === "/") {
+      this.myRef.current.cars = applySortingAndFiltering(this.state);;
+      this.myRef.current.filterCriteria = this.state.filterCriteria;
+      this.myRef.current.searchInput = this.state.searchInput;
+      this.myRef.current.toggleFilterPanel = this.state.toggleFilterPanel;
+      this.myRef.current.onSearchChange = this.onSearchChange;
+      this.myRef.current.changePriceRange = this.changePriceRange;
+      this.myRef.current.handleCarMakerFilterChange = this.handleCarMakerFilterChange;
+      this.myRef.current.changeAgeRange = this.changeAgeRange;
+      this.myRef.current.handleToggleFilterPanel = this.handleToggleFilterPanel;
+      this.myRef.current.goToCarDetails = this.goToCarDetails;
+    }
+
+    if (this.props.location.pathname === "/cart") {
+      this.myRef.current.cars = this.state.cars;
+      this.myRef.current.cart = this.state.cart;
+    }
+
+    if (this.props.location.pathname.includes("/car-details")) {
+      this.myRef.current.cars = this.state.cars;
+      this.myRef.current.addToCart = this.addToCart;
+      this.myRef.current.addToBookmark = this.addToBookmark;
+      this.myRef.current.goToCart = this.goToCart;
+    }
+  }
+
+  goToCart = () => {
+    this.props.history.push("/cart");
+  };
+
+  goToCarDetails = (carId) => {
+    this.props.history.push(`/car-details/${carId}`);
+  };
 
   /* Change hanlder for search box on home page */
   onSearchChange = (evt) => {
@@ -137,7 +181,6 @@ class App extends React.Component {
     }
   };
 
-
   /* Add to bookmarks action handler on car details page */
   addToBookmark = (carId) => {
     const car = this.getCarDetails(carId);
@@ -160,23 +203,15 @@ class App extends React.Component {
 
   render() {
     const cars = applySortingAndFiltering(this.state);
+
     return (
       <div className="App">
         <Header />
+
         <Switch>
           {/* Home page displaying cars grid with search and filtering panel */}
           <Route exact path="/">
-            <CarsList
-              cars={cars}
-              filterCriteria={this.state.filterCriteria}
-              searchInput={this.state.searchInput}
-              onSearchChange={this.onSearchChange}
-              changePriceRange={this.changePriceRange}
-              handleCarMakerFilterChange={this.handleCarMakerFilterChange}
-              changeAgeRange={this.changeAgeRange}
-              handleToggleFilterPanel={this.handleToggleFilterPanel}
-              toggleFilterPanel={this.state.toggleFilterPanel}
-            />
+            <car-list ref={this.myRef}></car-list>
           </Route>
 
           {/* Car details page displayed when cliked on any othe cars on the home page.
@@ -184,26 +219,14 @@ class App extends React.Component {
           <Route
             exact
             path="/car-details/:carId"
-            children={
-              <CarDetails
-                cars={this.state.cars}
-                addToCart={this.addToCart}
-                addToBookmark={this.addToBookmark}
-              />
-            }
+            children={<car-details ref={this.myRef}></car-details>}
           ></Route>
 
           {/* Cart page showing list of cars in the cart and total cost */}
           <Route
             exact
             path="/cart"
-            children={
-              <Cart
-                cars={this.state.cars}
-                cart={this.state.cart}
-                getCarDetails={this.getCarDetails}
-              />
-            }
+            children={<cart-element ref={this.myRef}></cart-element>}
           ></Route>
         </Switch>
       </div>
@@ -211,4 +234,4 @@ class App extends React.Component {
   }
 }
 
-export default App;
+export default withRouter(App);
